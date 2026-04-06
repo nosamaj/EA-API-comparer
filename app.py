@@ -240,6 +240,7 @@ if st.session_state.selected_series:
                 domain_rain  = [0.75, 1.0] if (has_rainfall and has_other) else [0.0, 1.0]
                 
                 fig = go.Figure()
+                all_series_dfs = []
                 
                 for idx, series in enumerate(st.session_state.selected_series):
                     readings = get_measure_readings(series['measure_uri'], start_date, end_date)
@@ -250,6 +251,12 @@ if st.session_state.selected_series:
                     df = pd.DataFrame(readings)
                     df['dateTime'] = pd.to_datetime(df['dateTime'])
                     df = df.sort_values('dateTime')
+                    
+                    export_df = df[['dateTime', 'value']].copy()
+                    export_df['Station'] = series['station_name']
+                    export_df['Measure'] = series['measure_name']
+                    export_df['Unit'] = series['unit']
+                    all_series_dfs.append(export_df)
                     
                     unit = series['unit']
                     is_rainfall = "rain" in series['measure_name'].lower() or unit == "mm"
@@ -339,6 +346,17 @@ if st.session_state.selected_series:
             )
             
             st.plotly_chart(fig, use_container_width=True)
+            
+            if all_series_dfs:
+                master_df = pd.concat(all_series_dfs, ignore_index=True)
+                csv = master_df.to_csv(index=False).encode('utf-8')
+                
+                st.download_button(
+                    label="📥 Download Plot Data as CSV",
+                    data=csv,
+                    file_name='ea_api_comparer_data.csv',
+                    mime='text/csv',
+                )
             
             # Show map
             st.subheader("Selected Stations Map")
